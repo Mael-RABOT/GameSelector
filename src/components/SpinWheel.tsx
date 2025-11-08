@@ -12,96 +12,106 @@ interface SpinWheelProps {
   onSpinEnd: (selectedGame: Game) => void;
 }
 
-// Helper to generate a list of distinct colors for the segments
-const generateSegmentColors = (numSegments: number): string[] => {
-  const colors: string[] = [];
-  const saturation = 70;
-  const lightness = 50;
-  for (let i = 0; i < numSegments; i++) {
-    const hue = (i * 360) / numSegments;
-    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-  }
-  return colors;
-};
+// --- SVG Geometry Helpers ---
+
+// Converts polar coordinates (angle, radius) to Cartesian coordinates (x, y)
+function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians),
+  };
+}
+
+// Describes an SVG path for a single colored wedge of the wheel
+function describeSlice(x: number, y: number, radius: number, startAngle: number, endAngle: number): string {
+  const start = polarToCartesian(x, y, radius, endAngle);
+  const end = polarToCartesian(x, y, radius, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+
+  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y} L ${x} ${y} L ${start.x} ${start.y}`;
+}
+
+// --- Component ---
 
 export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
-  const [spinning, setSpinning] = useState(true);
+  const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
 
   const numGames = games.length;
   const degreesPerGame = 360 / numGames;
 
-  // Memoize colors and gradient to prevent recalculation on every render
-  const segmentColors = useMemo(() => generateSegmentColors(numGames), [numGames]);
-  const conicGradient = useMemo(() => {
-    let gradient = 'conic-gradient(';
-    games.forEach((game, i) => {
-      const startAngle = i * degreesPerGame;
-      const endAngle = (i + 1) * degreesPerGame;
-      gradient += `${segmentColors[i]} ${startAngle}deg ${endAngle}deg, `;
-    });
-    return gradient.slice(0, -2) + ')';
-  }, [games, degreesPerGame, segmentColors]);
-
-
-  useEffect(() => {
-    // Ensure we don't spin if there are no games
-    if (games.length === 0) {
-      setSpinning(false);
-      return;
+  const segmentColors = useMemo(() => {
+    const colors: string[] = [];
+    for (let i = 0; i < numGames; i++) {
+      colors.push(i % 2 === 0 ? '#FFD700' : '#FF6347');
     }
+    return colors;
+  }, [numGames]);
 
-    setSpinning(true);
+  const handleSpin = () => {
+    if (isSpinning || games.length === 0) return;
+
+    setIsSpinning(true);
     const randomGameIndex = Math.floor(Math.random() * numGames);
     const selectedGame = games[randomGameIndex];
 
-    // Calculate the final rotation
-    // The pointer is at the top (270deg or -90deg). We want the middle of the segment to land there.
     const targetSegmentCenter = (randomGameIndex * degreesPerGame) + (degreesPerGame / 2);
+    // This is the corrected line. The pointer is at the top (360 or 0 degrees in our coordinate system), not 270.
+    const rotationToGo = 360 - targetSegmentCenter;
     
-    // We need to rotate the wheel so the target angle ends up at 270 degrees.
-    // The rotation needed is `270 - targetSegmentCenter`.
-    // We add multiple full rotations for the spinning effect.
-    const extraRotations = 360 * 7;
-    const finalRotation = extraRotations + (270 - targetSegmentCenter);
+    const extraRotations = 360 * 8;
+    const finalRotation = (rotation - (rotation % 360)) + extraRotations + rotationToGo;
 
     setRotation(finalRotation);
 
     const spinTimeout = setTimeout(() => {
       onSpinEnd(selectedGame);
-      setSpinning(false);
-    }, 8000); // Must match the CSS transition duration
+      setIsSpinning(false);
+    }, 8000);
 
-    // Cleanup function to prevent calling onSpinEnd twice in strict mode
     return () => clearTimeout(spinTimeout);
-  }, [games, numGames, degreesPerGame, onSpinEnd]);
-
+  };
+  
+  useEffect(() => {
+    const autoSpinTimeout = setTimeout(handleSpin, 100);
+    return () => clearTimeout(autoSpinTimeout);
+  }, []);
 
   return (
     <div className="wheel-container">
-      <div className="wheel-pointer"></div>
       <div
-        className="wheel"
-        style={{
-          background: conicGradient,
-          transform: `rotate(${rotation}deg)`,
-        }}
+        className="wheel-rotator"
+        style={{ transform: `rotate(${rotation}deg)` }}
       >
-        {games.map((game, i) => {
-          const rotationAngle = (i * degreesPerGame) + (degreesPerGame / 2);
-          return (
-            <div
-              key={game.id}
-              className="wheel-label"
-              style={{
-                transform: `rotate(${rotationAngle}deg) translateX(110px)`,
-              }}
-            >
-              <span className="wheel-label-text">{game.title}</span>
-            </div>
-          );
-        })}
+        <svg className="wheel-svg" viewBox="0 0 200 200">
+          <g>
+            {games.map((game, i) => {
+              const startAngle = i * degreesPerGame;
+              const endAngle = startAngle + degreesPerGame;
+              
+              const textAngle = startAngle + degreesPerGame / 2;
+              const textPos = polarToCartesian(100, 100, 60, textAngle);
+
+              return (
+                <g key={game.id}>
+                  <path d={describeSlice(100, 100, 100, startAngle, endAngle)} fill={segmentColors[i]} />
+                  <text
+                    x={textPos.x}
+                    y={textPos.y}
+                    transform={`rotate(${textAngle + 90}, ${textPos.x}, ${textPos.y})`}
+                    className="wheel-svg-text"
+                  >
+                    {game.title}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
       </div>
+      <div className="wheel-pointer"></div>
+      <div className="spin-btn" onClick={handleSpin}>SPIN</div>
     </div>
   );
 };

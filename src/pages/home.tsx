@@ -83,14 +83,19 @@ const styles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    backgroundColor: palette.background,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     border: `3px solid ${palette.black}`,
     boxShadow: `10px 10px 0 ${palette.accent}`,
-    padding: '2rem',
+    padding: '1rem',
     zIndex: 10,
-    width: '80%',
-    maxWidth: '500px',
+    width: '90vw',
+    height: '90vh',
+    maxWidth: 'none',
     textAlign: 'center' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   formInput: {
     border: `2px solid ${palette.black}`,
@@ -134,6 +139,11 @@ export const HomePage = () => {
     await update(gameRef, { isAlreadyPlayed: true, playedAt: new Date().toISOString() });
     setSelectedGame(game);
     setIsSpinning(false);
+
+    // Close the modal after a delay
+    setTimeout(() => {
+      setShowSpinModal(false);
+    }, 4000); // 4-second delay
   };
 
   const handleMoveToUnplayed = async (game: Game) => {
@@ -161,7 +171,7 @@ export const HomePage = () => {
       </div>
 
       {showAddGameForm && (
-        <div style={styles.modal}>
+        <div style={{...styles.modal, width: '80%', height: 'auto', maxWidth: '500px'}}>
           <h2>Add New Game</h2>
           <form onSubmit={handleAddGame}>
             <input style={styles.formInput} value={newGame.title} onChange={(e) => setNewGame({...newGame, title: e.target.value})} placeholder="Title" />
@@ -183,7 +193,6 @@ export const HomePage = () => {
               <h2 style={{ marginTop: 0 }}>You're Playing:</h2>
               <h3 style={{ fontSize: '2.5rem', margin: '1rem 0', color: palette.primary }}>{selectedGame.title}</h3>
               <p>({selectedGame.platform})</p>
-              <button style={styles.button} onClick={() => setShowSpinModal(false)}>AWESOME!</button>
             </div>
           ) : null}
         </div>

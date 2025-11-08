@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
 
 .wheel-container {
   position: relative;
-  width: 400px;
-  height: 400px;
+  width: 80vmin;
+  height: 80vmin;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -11,59 +11,76 @@
   font-family: 'Poppins', sans-serif;
 }
 
-/* The pointer that indicates the winning segment */
-.wheel-pointer {
-  position: absolute;
-  top: -10px; /* Position it just above the wheel */
-  left: 50%;
-  transform: translateX(-50%);
-  width: 30px;
-  height: 40px;
-  background: #FFD700; /* Gold color for contrast */
-  clip-path: polygon(50% 100%, 0 0, 100% 0);
-  z-index: 20;
-  border-bottom: 3px solid #B8860B; /* Darker gold for depth */
-}
-
-.wheel {
+.wheel-rotator {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  box-shadow: 0 0 0 5px #333,
-    0 0 0 15px #fff,
-    0 0 0 18px #111;
-  /* The transition is the key to the animation */
-  transition: transform 8s cubic-bezier(0.1, 0.7, 0.3, 1);
-  /* The background is now set via inline style (conic-gradient) */
+  transition: transform 8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Container for each game's title */
-.wheel-label {
+.wheel-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 1vmin rgba(0,0,0,0.3));
+}
+
+.wheel-svg-text {
+  font-size: 8px; /* SVG text size is relative to the viewBox */
+  fill: #2c3e50;
+  font-weight: 700;
+  text-anchor: middle; /* Center the text on its coordinates */
+  dominant-baseline: middle;
+  pointer-events: none; /* Make sure text doesn't interfere with clicks */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.wheel-pointer {
   position: absolute;
-  top: 50%;
+  top: -1.5vmin;
   left: 50%;
-  width: 0;
-  height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transform: translateX(-50%);
+  width: 5vmin;
+  height: 6vmin;
+  background: #c0392b;
+  clip-path: polygon(50% 100%, 15% 0, 85% 0);
+  z-index: 30;
+  border-radius: 50% 50% 0 0;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
 }
 
-/* The actual text for the game title */
-.wheel-label-text {
-  color: white;
-  font-size: 1.1em;
-  font-weight: 600;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  /* Rotate the text back to be upright */
-  transform: rotate(-90deg);
-  max-width: 100px; /* Prevent long text from overlapping */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-  display: block;
+.spin-btn {
+  position: absolute;
+  width: 18vmin;
+  height: 18vmin;
+  background: #ecf0f1;
+  border-radius: 50%;
+  z-index: 25;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-transform: uppercase;
+  font-weight: 900;
+  font-size: 3.5vmin;
+  color: #34495e;
+  letter-spacing: 0.1em;
+  border: 1vmin solid #bdc3c7;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.1);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.spin-btn:hover {
+  background: #fff;
+  color: #2c3e50;
+  box-shadow: 0 0 15px rgba(0,0,0,0.3), inset 0 0 5px rgba(0,0,0,0.1);
+}
+
+.spin-btn:active {
+  transform: scale(0.95);
 }
