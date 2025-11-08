@@ -12,9 +12,18 @@ interface SpinWheelProps {
   onSpinEnd: (selectedGame: Game) => void;
 }
 
+// --- Randomness Helper ---
+
+// Generates a cryptographically secure random integer up to a given maximum.
+function secureRandom(max: number): number {
+  const randomValues = new Uint32Array(1);
+  window.crypto.getRandomValues(randomValues);
+  return randomValues[0] % max;
+}
+
+
 // --- SVG Geometry Helpers ---
 
-// Converts polar coordinates (angle, radius) to Cartesian coordinates (x, y)
 function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
   return {
@@ -23,7 +32,6 @@ function polarToCartesian(centerX: number, centerY: number, radius: number, angl
   };
 }
 
-// Describes an SVG path for a single colored wedge of the wheel
 function describeSlice(x: number, y: number, radius: number, startAngle: number, endAngle: number): string {
   const start = polarToCartesian(x, y, radius, endAngle);
   const end = polarToCartesian(x, y, radius, startAngle);
@@ -37,6 +45,7 @@ function describeSlice(x: number, y: number, radius: number, startAngle: number,
 export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [shuffledGames, setShuffledGames] = useState<Game[]>(games);
 
   const numGames = games.length;
   const degreesPerGame = 360 / numGames;
@@ -52,12 +61,22 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
   const handleSpin = () => {
     if (isSpinning || games.length === 0) return;
 
+    // 1. Shuffle the games before the spin
+    const gamesToShuffle = [...games];
+    for (let i = gamesToShuffle.length - 1; i > 0; i--) {
+      const j = secureRandom(i + 1);
+      [gamesToShuffle[i], gamesToShuffle[j]] = [gamesToShuffle[j], gamesToShuffle[i]];
+    }
+    setShuffledGames(gamesToShuffle);
+    
     setIsSpinning(true);
-    const randomGameIndex = Math.floor(Math.random() * numGames);
-    const selectedGame = games[randomGameIndex];
+    
+    // 2. Select a winner from the newly shuffled list
+    const randomGameIndex = secureRandom(numGames);
+    const selectedGame = gamesToShuffle[randomGameIndex];
 
+    // 3. Calculate rotation to land on the winner in the shuffled list
     const targetSegmentCenter = (randomGameIndex * degreesPerGame) + (degreesPerGame / 2);
-    // This is the corrected line. The pointer is at the top (360 or 0 degrees in our coordinate system), not 270.
     const rotationToGo = 360 - targetSegmentCenter;
     
     const extraRotations = 360 * 8;
@@ -74,6 +93,7 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
   };
   
   useEffect(() => {
+    // Auto-spin on first mount
     const autoSpinTimeout = setTimeout(handleSpin, 100);
     return () => clearTimeout(autoSpinTimeout);
   }, []);
@@ -86,7 +106,7 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
       >
         <svg className="wheel-svg" viewBox="0 0 200 200">
           <g>
-            {games.map((game, i) => {
+            {shuffledGames.map((game, i) => {
               const startAngle = i * degreesPerGame;
               const endAngle = startAngle + degreesPerGame;
               
