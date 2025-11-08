@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+.wheel-container {
+  position: relative;
+  width: 400px;
+  height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* The pointer that indicates the winning segment */
+.wheel-pointer {
+  position: absolute;
+  top: -10px; /* Position it just above the wheel */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 40px;
+  background: #FFD700; /* Gold color for contrast */
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  z-index: 20;
+  border-bottom: 3px solid #B8860B; /* Darker gold for depth */
+}
+
+.wheel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px #333,
+    0 0 0 15px #fff,
+    0 0 0 18px #111;
+  /* The transition is the key to the animation */
+  transition: transform 8s cubic-bezier(0.1, 0.7, 0.3, 1);
+  /* The background is now set via inline style (conic-gradient) */
+}
+
+/* Container for each game's title */
+.wheel-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The actual text for the game title */
+.wheel-label-text {
+  color: white;
+  font-size: 1.1em;
+  font-weight: 600;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  /* Rotate the text back to be upright */
+  transform: rotate(-90deg);
+  max-width: 100px; /* Prevent long text from overlapping */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  display: block;
+}
