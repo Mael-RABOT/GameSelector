@@ -12,15 +12,18 @@ interface SpinWheelProps {
   onSpinEnd: (selectedGame: Game) => void;
 }
 
-// --- Randomness Helper ---
+// --- Randomness Helpers ---
 
-// Generates a cryptographically secure random integer up to a given maximum.
 function secureRandom(max: number): number {
   const randomValues = new Uint32Array(1);
   window.crypto.getRandomValues(randomValues);
   return randomValues[0] % max;
 }
 
+// Returns a secure random float between -1 and 1
+function secureRandomFloat(): number {
+  return (secureRandom(1000) / 500) - 1;
+}
 
 // --- SVG Geometry Helpers ---
 
@@ -46,6 +49,7 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [shuffledGames, setShuffledGames] = useState<Game[]>(games);
+  const [spinDuration, setSpinDuration] = useState(9000);
 
   const numGames = games.length;
   const degreesPerGame = 360 / numGames;
@@ -61,7 +65,6 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
   const handleSpin = () => {
     if (isSpinning || games.length === 0) return;
 
-    // 1. Shuffle the games before the spin
     const gamesToShuffle = [...games];
     for (let i = gamesToShuffle.length - 1; i > 0; i--) {
       const j = secureRandom(i + 1);
@@ -71,15 +74,19 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
     
     setIsSpinning(true);
     
-    // 2. Select a winner from the newly shuffled list
     const randomGameIndex = secureRandom(numGames);
     const selectedGame = gamesToShuffle[randomGameIndex];
 
-    // 3. Calculate rotation to land on the winner in the shuffled list
-    const targetSegmentCenter = (randomGameIndex * degreesPerGame) + (degreesPerGame / 2);
-    const rotationToGo = 360 - targetSegmentCenter;
+    // --- UPDATED THRILLING LOGIC ---
+    const randomDuration = secureRandom(5000) + 12000; // 12 to 17 seconds
+    setSpinDuration(randomDuration);
     
-    const extraRotations = 360 * 8;
+    const extraRotations = 360 * (secureRandom(5) + 8);
+    
+    const targetSegmentCenter = (randomGameIndex * degreesPerGame) + (degreesPerGame / 2);
+    const randomOffset = secureRandomFloat() * (degreesPerGame / 2) * 0.7;
+    const rotationToGo = 360 - (targetSegmentCenter + randomOffset);
+    
     const finalRotation = (rotation - (rotation % 360)) + extraRotations + rotationToGo;
 
     setRotation(finalRotation);
@@ -87,13 +94,12 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
     const spinTimeout = setTimeout(() => {
       onSpinEnd(selectedGame);
       setIsSpinning(false);
-    }, 8000);
+    }, randomDuration);
 
     return () => clearTimeout(spinTimeout);
   };
   
   useEffect(() => {
-    // Auto-spin on first mount
     const autoSpinTimeout = setTimeout(handleSpin, 100);
     return () => clearTimeout(autoSpinTimeout);
   }, []);
@@ -102,7 +108,11 @@ export const SpinWheel: React.FC<SpinWheelProps> = ({ games, onSpinEnd }) => {
     <div className="wheel-container">
       <div
         className="wheel-rotator"
-        style={{ transform: `rotate(${rotation}deg)` }}
+        style={{ 
+          transform: `rotate(${rotation}deg)`,
+          // Use a new bezier curve for a longer, more dramatic slow-down
+          transition: `transform ${spinDuration}ms cubic-bezier(0.15, 0.95, 0.45, 1)`
+        }}
       >
         <svg className="wheel-svg" viewBox="0 0 200 200">
           <g>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
-import { ref, onValue, push, update } from 'firebase/database';
+import { ref, onValue, push, update, remove } from 'firebase/database';
 import { BrutalistBackground } from '../components/BrutalistBackground';
 import { SpinWheel } from '../components/SpinWheel';
 
@@ -77,6 +77,11 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: '1rem',
+  },
+  gameItemActions: {
+    display: 'flex',
+    gap: '0.5rem',
   },
   modal: {
     position: 'fixed' as const,
@@ -110,8 +115,10 @@ const styles = {
 export const HomePage = () => {
   const [unplayedGames, setUnplayedGames] = useState<Game[]>([]);
   const [playedGames, setPlayedGames] = useState<Game[]>([]);
-  const [showAddGameForm, setShowAddGameForm] = useState(false);
-  const [newGame, setNewGame] = useState({ title: '', price: '', platform: '' });
+  const [showGameForm, setShowGameForm] = useState(false);
+  const [editingGame, setEditingGame] = useState<Game | null>(null);
+  const [gameFormData, setGameFormData] = useState({ title: '', price: '', platform: '' });
+  
   const [showSpinModal, setShowSpinModal] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -120,18 +127,50 @@ export const HomePage = () => {
     const gamesRef = ref(db, 'games');
     onValue(gamesRef, (snapshot) => {
       const data = snapshot.val();
-      const allGames = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+      const allGames: Game[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
       setUnplayedGames(allGames.filter(game => !game.isAlreadyPlayed));
       setPlayedGames(allGames.filter(game => game.isAlreadyPlayed));
     });
   }, []);
 
-  const handleAddGame = (e: React.FormEvent) => {
+  const handleSaveGame = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGame.title) return alert('Title is required.');
-    push(ref(db, 'games'), { ...newGame, isAlreadyPlayed: false });
-    setNewGame({ title: '', price: '', platform: '' });
-    setShowAddGameForm(false);
+    if (!gameFormData.title) return alert('Title is required.');
+
+    if (editingGame) {
+      // Update existing game
+      const gameRef = ref(db, `games/${editingGame.id}`);
+      update(gameRef, { ...editingGame, ...gameFormData });
+    } else {
+      // Add new game
+      push(ref(db, 'games'), { ...gameFormData, isAlreadyPlayed: false });
+    }
+    
+    closeForm();
+  };
+
+  const handleDeleteGame = (gameId: string) => {
+    if (window.confirm('Are you sure you want to delete this game?')) {
+      remove(ref(db, `games/${gameId}`));
+    }
+  };
+
+  const openFormForUpdate = (game: Game) => {
+    setEditingGame(game);
+    setGameFormData({ title: game.title, price: game.price, platform: game.platform });
+    setShowGameForm(true);
+  };
+
+  const openFormForAdd = () => {
+    setEditingGame(null);
+    setGameFormData({ title: '', price: '', platform: '' });
+    setShowGameForm(true);
+  };
+
+  const closeForm = () => {
+    setEditingGame(null);
+    setGameFormData({ title: '', price: '', platform: '' });
+    setShowGameForm(false);
   };
 
   const handleSpinEnd = async (game: Game) => {
@@ -140,10 +179,9 @@ export const HomePage = () => {
     setSelectedGame(game);
     setIsSpinning(false);
 
-    // Close the modal after a delay
     setTimeout(() => {
       setShowSpinModal(false);
-    }, 4000); // 4-second delay
+    }, 4000);
   };
 
   const handleMoveToUnplayed = async (game: Game) => {
@@ -166,19 +204,19 @@ export const HomePage = () => {
       </header>
 
       <div style={styles.buttonGroup}>
-        <button style={styles.button} onClick={() => setShowAddGameForm(true)}>+ ADD GAME</button>
+        <button style={styles.button} onClick={openFormForAdd}>+ ADD GAME</button>
         <button style={{...styles.button, backgroundColor: palette.accent}} onClick={handleSpinIt}>SPIN IT!</button>
       </div>
 
-      {showAddGameForm && (
+      {showGameForm && (
         <div style={{...styles.modal, width: '80%', height: 'auto', maxWidth: '500px'}}>
-          <h2>Add New Game</h2>
-          <form onSubmit={handleAddGame}>
-            <input style={styles.formInput} value={newGame.title} onChange={(e) => setNewGame({...newGame, title: e.target.value})} placeholder="Title" />
-            <input style={styles.formInput} value={newGame.price} onChange={(e) => setNewGame({...newGame, price: e.target.value})} placeholder="Price" />
-            <input style={styles.formInput} value={newGame.platform} onChange={(e) => setNewGame({...newGame, platform: e.target.value})} placeholder="Platform" />
+          <h2>{editingGame ? 'Update Game' : 'Add New Game'}</h2>
+          <form onSubmit={handleSaveGame}>
+            <input style={styles.formInput} value={gameFormData.title} onChange={(e) => setGameFormData({...gameFormData, title: e.target.value})} placeholder="Title" />
+            <input style={styles.formInput} value={gameFormData.price} onChange={(e) => setGameFormData({...gameFormData, price: e.target.value})} placeholder="Price" />
+            <input style={styles.formInput} value={gameFormData.platform} onChange={(e) => setGameFormData({...gameFormData, platform: e.target.value})} placeholder="Platform" />
             <button type="submit" style={styles.button}>Save</button>
-            <button type="button" style={{...styles.button, backgroundColor: 'transparent', color: palette.black}} onClick={() => setShowAddGameForm(false)}>Cancel</button>
+            <button type="button" style={{...styles.button, backgroundColor: 'transparent', color: palette.black}} onClick={closeForm}>Cancel</button>
           </form>
         </div>
       )}
@@ -186,7 +224,6 @@ export const HomePage = () => {
       {showSpinModal && (
         <div style={styles.modal}>
           {isSpinning && unplayedGames.length > 0 ? (
-            // @ts-expect-error typing
             <SpinWheel games={unplayedGames} onSpinEnd={handleSpinEnd} />
           ) : selectedGame ? (
             <div>
@@ -204,6 +241,10 @@ export const HomePage = () => {
           {unplayedGames.map((game) => (
             <div key={game.id} style={styles.gameItem}>
               <span>{game.title}</span>
+              <div style={styles.gameItemActions}>
+                <button style={{...styles.button, padding: '0.25rem 0.5rem', boxShadow: `2px 2px 0 ${palette.black}`}} onClick={() => openFormForUpdate(game)}>Update</button>
+                <button style={{...styles.button, padding: '0.25rem 0.5rem', boxShadow: `2px 2px 0 ${palette.black}`, backgroundColor: '#FF6347'}} onClick={() => handleDeleteGame(game.id)}>Delete</button>
+              </div>
             </div>
           ))}
         </div>
